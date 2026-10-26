@@ -121,6 +121,10 @@ button:disabled,input:disabled{opacity:.45;cursor:not-allowed}
 .review li .rnd{color:var(--muted);font-size:.85rem;margin-left:auto}
 .review .empty{color:var(--muted);font-style:italic;cursor:default}
 .score{font-family:var(--display);font-size:1.15rem;letter-spacing:.03em;margin:0}
+/* update banner */
+.updbar{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 10px);z-index:60;display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:var(--sheet);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;box-shadow:0 8px 28px rgb(0 0 0 / .2);width:max-content;max-width:calc(100% - 32px);box-sizing:border-box}
+.updbar span{font-weight:700}
+.updbar button{padding:7px 12px}
 /* help */
 .helpbtn{padding:6px 12px;font-family:var(--display);letter-spacing:.04em;font-weight:500;border-radius:6px;background:var(--sheet)}
 .helpbtn span{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--btn);color:var(--btn-fg);font-size:.8rem;font-weight:800;margin-right:4px;vertical-align:-2px}
@@ -169,6 +173,11 @@ svg.shape .star{fill:var(--sel);stroke:var(--ink);stroke-width:1.2;vector-effect
 @media (prefers-reduced-motion:reduce){path.st{transition:none}.cardin{transition:none}}
 </style>
 
+<div class="updbar" id="updBar" role="status" hidden>
+  <span>A new version is ready.</span>
+  <button class="primary" id="updNow">Update</button>
+  <button id="updLater" aria-label="Not now">Not now</button>
+</div>
 <div class="wrap">
   <header>
     <div>
@@ -805,6 +814,42 @@ let saved = {};
 try{ saved = JSON.parse(localStorage.getItem(SAVE_KEY)||'{}'); }catch(e){}
 start(saved);
 if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+
+/* ---------- update check ----------
+   Each upload of index.html carries a new BUILD stamp. When the app opens or comes back
+   on screen (at most once an hour), it fetches the live index.html and compares stamps. */
+const BUILD = '2026-10-26T09:24:56.426Z';
+const CHECK_KEY = 'nts-last-update-check', HOUR = 3600e3;
+let latestHtml = null;
+async function checkForUpdate(force){
+  if(!navigator.onLine) return;
+  let last = 0; try{ last = +localStorage.getItem(CHECK_KEY) || 0; }catch(e){}
+  if(!force && Date.now() - last < HOUR) return;
+  try{ localStorage.setItem(CHECK_KEY, String(Date.now())); }catch(e){}
+  try{
+    const res = await fetch('index.html?check=' + Date.now(), {cache:'no-store'});
+    if(!res.ok) return;
+    const html = await res.text();
+    const m = html.match(/const BUILD = '([^']+)'/);
+    if(m && m[1] !== BUILD){ latestHtml = html; $('updBar').hidden = false; }
+  }catch(e){ /* offline or GitHub unreachable: try again next time */ }
+}
+async function applyUpdate(){
+  $('updNow').disabled = true; $('updNow').textContent = 'Updating…';
+  try{
+    if(latestHtml && 'caches' in window){
+      const cache = await caches.open('name-the-states');
+      const mk = () => new Response(latestHtml, {headers:{'Content-Type':'text/html; charset=utf-8'}});
+      await cache.put('./', mk()); await cache.put('index.html', mk());
+    }
+    const reg = await navigator.serviceWorker?.getRegistration(); await reg?.update();
+  }catch(e){}
+  location.reload();
+}
+$('updNow').onclick = applyUpdate;
+$('updLater').onclick = () => { $('updBar').hidden = true; };
+checkForUpdate(true);
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') checkForUpdate(false); });
 </script>
 
 </body>
