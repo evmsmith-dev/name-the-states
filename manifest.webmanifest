@@ -1,6 +1,6 @@
 {
-  "name": "Name the States",
-  "short_name": "Name States",
+  "name": "Name the States and Capitals",
+  "short_name": "States and Capitals",
   "description": "Name all 50 US states and their capitals on a blank map.",
   "id": "./",
   "start_url": "./",
