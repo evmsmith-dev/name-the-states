@@ -18,7 +18,9 @@ A map quiz for the 50 US states and their capitals. It installs as an app on pho
 
 ## Updating
 
-Upload changed files to the same repository. The installed app picks up the new version the second time it's opened after the update.
+Upload the changed `index.html` to the same repository, replacing the old one. Every new `index.html` carries its own version stamp.
+
+When someone opens the app, or switches back to it, it checks for a new version at most once an hour. If there is one, a banner says **A new version is ready**, and tapping **Update** loads it. GitHub can take up to about 10 minutes after an upload before the new file is visible.
 
 ## Files
 
